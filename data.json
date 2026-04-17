@@ -1,0 +1,28 @@
+[
+  {
+    "model_no": "SM-S918B",
+    "product_name": "Samsung Galaxy S23 Ultra",
+    "category": "Smartphone",
+    "country": "IN",
+    "ram": "12GB",
+    "storage": "256GB"
+  },
+  {
+    "model_no": "QA55Q60BAKXXL",
+    "product_name": "Samsung 55 QLED TV",
+    "category": "TV",
+    "country": "IN",
+    "screen_size": "55 inch",
+    "resolution": "4K",
+    "panel_type": "LED",
+    "smart_tv": "Yes"
+  },
+  {
+    "model_no": "AC123US",
+    "product_name": "LG 1.5 Ton Split AC",
+    "category": "AC",
+    "country": "US",
+    "capacity": "1.5 Ton",
+    "type": "Split"
+  }
+]
