@@ -2,31 +2,54 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Product Data Portal</title>
+  <title>Product Data Portal Pro</title>
   <style>
-    body { font-family: Arial; padding: 20px; }
-    textarea { width: 100%; height: 120px; }
-    table { border-collapse: collapse; width: 100%; margin-top: 20px; }
-    th, td { border: 1px solid #ccc; padding: 8px; }
-    th { background: #f4f4f4; }
+    body { font-family: Arial; padding: 20px; background:#f7f9fc; }
+    h2 { margin-bottom:10px }
+    textarea { width: 100%; height: 120px; padding:10px; }
+    .controls { display:flex; gap:10px; flex-wrap:wrap; margin:10px 0 }
+    select, button { padding:8px }
+    .toggles { margin-top:10px }
+    .toggles label { margin-right:10px }
+    table { border-collapse: collapse; width: 100%; margin-top: 20px; background:#fff }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align:left }
+    th { background: #222; color:#fff }
     .not-found { color: red; }
+    .badge { padding:2px 6px; border-radius:6px; background:#e6f0ff }
   </style>
 </head>
 <body>
 
-<h2>Product Data Mining Portal</h2>
+<h2>🚀 Product Data Mining Portal (Pro)</h2>
 
 <textarea id="inputModels" placeholder="Paste model numbers (one per line)"></textarea>
-<br><br>
 
-<label>Country Filter:</label>
-<select id="countryFilter">
-  <option value="ALL">All</option>
-  <option value="IN">India</option>
-  <option value="US">United States</option>
-</select>
+<div class="controls">
+  <select id="countryFilter">
+    <option value="ALL">All Countries</option>
+    <option value="IN">India</option>
+    <option value="US">United States</option>
+  </select>
 
-<button onclick="searchBulk()">Search</button>
+  <select id="categoryFilter">
+    <option value="ALL">All Categories</option>
+    <option value="TV">TV</option>
+    <option value="AC">AC</option>
+    <option value="Smartphone">Smartphone</option>
+  </select>
+
+  <button onclick="searchBulk()">🔍 Search</button>
+  <button onclick="exportCSV()">⬇ Export CSV</button>
+</div>
+
+<div class="toggles">
+  <label><input type="checkbox" checked data-field="brand"> Brand</label>
+  <label><input type="checkbox" checked data-field="price"> Price</label>
+  <label><input type="checkbox" checked data-field="ram"> RAM</label>
+  <label><input type="checkbox" checked data-field="storage"> Storage</label>
+  <label><input type="checkbox" checked data-field="screen_size"> Screen Size</label>
+  <label><input type="checkbox" checked data-field="capacity"> Capacity</label>
+</div>
 
 <table id="resultTable">
   <thead>
@@ -35,6 +58,7 @@
       <th>Product</th>
       <th>Category</th>
       <th>Country</th>
+      <th>Details</th>
       <th>Status</th>
     </tr>
   </thead>
@@ -42,44 +66,84 @@
 </table>
 
 <script>
+let lastResults = [];
+
 async function searchBulk() {
   const input = document.getElementById("inputModels").value
-    .split("\\n")
-    .map(i => i.trim())
-    .filter(i => i);
+    .split("\n").map(i => i.trim()).filter(i => i);
 
   const country = document.getElementById("countryFilter").value;
+  const category = document.getElementById("categoryFilter").value;
 
   const res = await fetch("data.json");
   const data = await res.json();
 
   const tbody = document.querySelector("#resultTable tbody");
   tbody.innerHTML = "";
+  lastResults = [];
 
   input.forEach(model => {
     let result = data.find(p => p.model_no.toLowerCase() === model.toLowerCase());
 
-    if (result && (country === "ALL" || result.country === country)) {
-      addRow(result.model_no, result.product_name, result.category, result.country, "Found");
+    if (result &&
+        (country === "ALL" || result.country === country) &&
+        (category === "ALL" || result.category === category)) {
+
+      const details = getDetails(result);
+      addRow(result, details, "Found");
+      lastResults.push({ ...result, status:"Found" });
+
     } else {
-      addRow(model, "-", "-", "-", "Not Found", true);
+      addRow({ model_no:model }, "-", "Not Found", true);
+      lastResults.push({ model_no:model, status:"Not Found" });
     }
   });
 }
 
-function addRow(model, name, category, country, status, notFound=false) {
+function getDetails(p) {
+  const toggles = document.querySelectorAll(".toggles input:checked");
+  let details = [];
+
+  toggles.forEach(t => {
+    let key = t.dataset.field;
+    if (p[key]) details.push(`<span class='badge'>${key}: ${p[key]}</span>`);
+  });
+
+  return details.join(" ");
+}
+
+function addRow(p, details, status, notFound=false) {
   const row = document.createElement("tr");
   if (notFound) row.classList.add("not-found");
 
   row.innerHTML = `
-    <td>${model}</td>
-    <td>${name}</td>
-    <td>${category}</td>
-    <td>${country}</td>
+    <td>${p.model_no || "-"}</td>
+    <td>${p.product_name || "-"}</td>
+    <td>${p.category || "-"}</td>
+    <td>${p.country || "-"}</td>
+    <td>${details}</td>
     <td>${status}</td>
   `;
 
   document.querySelector("#resultTable tbody").appendChild(row);
+}
+
+function exportCSV() {
+  if (!lastResults.length) return alert("No data to export");
+
+  let csv = "Model,Product,Category,Country,Status\n";
+
+  lastResults.forEach(r => {
+    csv += `${r.model_no || ""},${r.product_name || ""},${r.category || ""},${r.country || ""},${r.status}\n`;
+  });
+
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "results.csv";
+  a.click();
 }
 </script>
 
