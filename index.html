@@ -1,151 +1,77 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Product Data Portal Pro</title>
-  <style>
-    body { font-family: Arial; padding: 20px; background:#f7f9fc; }
-    h2 { margin-bottom:10px }
-    textarea { width: 100%; height: 120px; padding:10px; }
-    .controls { display:flex; gap:10px; flex-wrap:wrap; margin:10px 0 }
-    select, button { padding:8px }
-    .toggles { margin-top:10px }
-    .toggles label { margin-right:10px }
-    table { border-collapse: collapse; width: 100%; margin-top: 20px; background:#fff }
-    th, td { border: 1px solid #ddd; padding: 8px; text-align:left }
-    th { background: #222; color:#fff }
-    .not-found { color: red; }
-    .badge { padding:2px 6px; border-radius:6px; background:#e6f0ff }
-  </style>
+    <meta charset="UTF-8">
+    <title>SKU MINER V3.5</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background: #0b0f1a; color: #e2e8f0; font-family: 'Inter', sans-serif; }
+        .glass { background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.08); backdrop-filter: blur(10px); }
+    </style>
 </head>
-<body>
+<body class="p-10">
+    <div class="max-w-6xl mx-auto">
+        <h1 class="text-3xl font-black text-white mb-8 uppercase tracking-tighter">SKU <span class="text-blue-500">Miner</span></h1>
+        
+        <div class="grid grid-cols-12 gap-8">
+            <div class="col-span-4 glass p-8 rounded-3xl">
+                <label class="text-[10px] font-bold text-slate-500 uppercase block mb-2">Model Input</label>
+                <textarea id="model-input" rows="6" class="w-full bg-slate-900 border border-white/10 rounded-xl p-4 text-sm mb-4 outline-none focus:border-blue-500" placeholder="SM-E076BDBAINS"></textarea>
+                <button onclick="triggerMining()" class="w-full py-4 bg-blue-600 hover:bg-blue-500 rounded-xl font-bold text-xs uppercase tracking-widest transition-all">Start Sourcing</button>
+            </div>
 
-<h2>🚀 Product Data Mining Portal (Pro)</h2>
+            <div class="col-span-8 glass rounded-3xl overflow-hidden">
+                <table class="w-full text-left">
+                    <thead class="bg-white/5 text-[9px] text-slate-500 uppercase font-bold tracking-widest">
+                        <tr>
+                            <th class="p-6">Model</th>
+                            <th class="p-6">Attributes</th>
+                            <th class="p-6">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="results-body" class="divide-y divide-white/5 text-sm"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 
-<textarea id="inputModels" placeholder="Paste model numbers (one per line)"></textarea>
+    <script>
+        async function triggerMining() {
+            const input = document.getElementById('model-input').value.trim();
+            if(!input) return;
+            
+            const body = document.getElementById('results-body');
+            body.innerHTML = `<tr><td class="p-6 text-white">${input}</td><td class="p-6 text-slate-500 italic">Processing...</td><td class="p-6 text-blue-400 animate-pulse">RUNNING</td></tr>`;
 
-<div class="controls">
-  <select id="countryFilter">
-    <option value="ALL">All Countries</option>
-    <option value="IN">India</option>
-    <option value="US">United States</option>
-  </select>
+            // Wait 5 seconds then try to fetch results.csv from GitHub
+            setTimeout(loadData, 5000);
+        }
 
-  <select id="categoryFilter">
-    <option value="ALL">All Categories</option>
-    <option value="TV">TV</option>
-    <option value="AC">AC</option>
-    <option value="Smartphone">Smartphone</option>
-  </select>
+        async function loadData() {
+            try {
+                // Ensure this URL points to your actual CSV on GitHub
+                const response = await fetch('results.csv?t=' + new Date().getTime());
+                const csv = await response.text();
+                const rows = csv.split('\n').slice(1);
+                const body = document.getElementById('results-body');
+                body.innerHTML = '';
 
-  <button onclick="searchBulk()">🔍 Search</button>
-  <button onclick="exportCSV()">⬇ Export CSV</button>
-</div>
-
-<div class="toggles">
-  <label><input type="checkbox" checked data-field="brand"> Brand</label>
-  <label><input type="checkbox" checked data-field="price"> Price</label>
-  <label><input type="checkbox" checked data-field="ram"> RAM</label>
-  <label><input type="checkbox" checked data-field="storage"> Storage</label>
-  <label><input type="checkbox" checked data-field="screen_size"> Screen Size</label>
-  <label><input type="checkbox" checked data-field="capacity"> Capacity</label>
-</div>
-
-<table id="resultTable">
-  <thead>
-    <tr>
-      <th>Model</th>
-      <th>Product</th>
-      <th>Category</th>
-      <th>Country</th>
-      <th>Details</th>
-      <th>Status</th>
-    </tr>
-  </thead>
-  <tbody></tbody>
-</table>
-
-<script>
-let lastResults = [];
-
-async function searchBulk() {
-  const input = document.getElementById("inputModels").value
-    .split("\n").map(i => i.trim()).filter(i => i);
-
-  const country = document.getElementById("countryFilter").value;
-  const category = document.getElementById("categoryFilter").value;
-
-  const res = await fetch("data.json");
-  const data = await res.json();
-
-  const tbody = document.querySelector("#resultTable tbody");
-  tbody.innerHTML = "";
-  lastResults = [];
-
-  input.forEach(model => {
-    let result = data.find(p => p.model_no.toLowerCase() === model.toLowerCase());
-
-    if (result &&
-        (country === "ALL" || result.country === country) &&
-        (category === "ALL" || result.category === category)) {
-
-      const details = getDetails(result);
-      addRow(result, details, "Found");
-      lastResults.push({ ...result, status:"Found" });
-
-    } else {
-      addRow({ model_no:model }, "-", "Not Found", true);
-      lastResults.push({ model_no:model, status:"Not Found" });
-    }
-  });
-}
-
-function getDetails(p) {
-  const toggles = document.querySelectorAll(".toggles input:checked");
-  let details = [];
-
-  toggles.forEach(t => {
-    let key = t.dataset.field;
-    if (p[key]) details.push(`<span class='badge'>${key}: ${p[key]}</span>`);
-  });
-
-  return details.join(" ");
-}
-
-function addRow(p, details, status, notFound=false) {
-  const row = document.createElement("tr");
-  if (notFound) row.classList.add("not-found");
-
-  row.innerHTML = `
-    <td>${p.model_no || "-"}</td>
-    <td>${p.product_name || "-"}</td>
-    <td>${p.category || "-"}</td>
-    <td>${p.country || "-"}</td>
-    <td>${details}</td>
-    <td>${status}</td>
-  `;
-
-  document.querySelector("#resultTable tbody").appendChild(row);
-}
-
-function exportCSV() {
-  if (!lastResults.length) return alert("No data to export");
-
-  let csv = "Model,Product,Category,Country,Status\n";
-
-  lastResults.forEach(r => {
-    csv += `${r.model_no || ""},${r.product_name || ""},${r.category || ""},${r.country || ""},${r.status}\n`;
-  });
-
-  const blob = new Blob([csv], { type: 'text/csv' });
-  const url = URL.createObjectURL(blob);
-
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "results.csv";
-  a.click();
-}
-</script>
-
+                rows.forEach(row => {
+                    const cols = row.split(',');
+                    if(cols.length > 1) {
+                        body.innerHTML += `
+                        <tr class="hover:bg-white/[0.01]">
+                            <td class="p-6 font-bold text-white">${cols[0]}</td>
+                            <td class="p-6">
+                                <span class="bg-blue-500/10 text-blue-400 px-2 py-1 rounded text-[10px] font-bold mr-2">${cols[1]}</span>
+                                <span class="bg-emerald-500/10 text-emerald-400 px-2 py-1 rounded text-[10px] font-bold">${cols[2]}</span>
+                            </td>
+                            <td class="p-6 text-emerald-400 font-black text-[10px]">${cols[5]}</td>
+                        </tr>`;
+                    }
+                });
+            } catch (e) { console.log("Waiting for file update..."); }
+        }
+    </script>
 </body>
 </html>
